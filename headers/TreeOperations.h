@@ -78,7 +78,7 @@ BinaryTree<TKey, TElement> FromString(const std::string& s) {
 
     size_t pos = 0;
     while (pos < s.size()) {
-        size_t pairEnd = s.find('|', pos);
+        size_t pairEnd = s.find('|', pos); //если он доходит до конца строки и не находит | он возвращает std::string::npos
         if (pairEnd == std::string::npos) {
             pairEnd = s.size();
         }
