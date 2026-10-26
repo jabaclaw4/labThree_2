@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <stdexcept>
 #include <utility>
-
+#include <sstream>
 #include "DynamicArray.h"
 #include "IDictionary.h"
 #include "TraverseOrder.h"
@@ -105,6 +105,48 @@ private:
         };
         root_ = Builder::Build(nodes, 0, nodes.GetSize());
         height_ = GetHeight();
+    }
+
+    // сериализация узла по заданному формату
+    std::string SerializeNode(Node* node, const std::string& format) const {
+        if (node == nullptr) return "";
+        std::string res;
+
+        // определяем какие буквы использовать (русские или английские)
+        std::string kSym = (format.find("К") != std::string::npos) ? "К" : "K";
+        std::string lSym = (format.find("Л") != std::string::npos) ? "Л" : "L";
+        std::string pSym = (format.find("П") != std::string::npos) ? "П" : "P";
+
+        std::ostringstream ss;
+        ss << node->key;
+        std::string keyStr = ss.str();
+
+        for (size_t i = 0; i < format.size(); ) {
+            if (format.compare(i, kSym.size(), kSym) == 0) {
+                res += keyStr;
+                i += kSym.size();
+            } else if (format.compare(i, lSym.size(), lSym) == 0) {
+                res += SerializeNode(node->left, format);
+                i += lSym.size();
+            } else if (format.compare(i, pSym.size(), pSym) == 0) {
+                res += SerializeNode(node->right, format);
+                i += pSym.size();
+            } else {
+                res += format[i];
+                i++;
+            }
+        }
+        return res;
+    }
+
+    // обход дерева для вывода пар узел родитель
+    void PrintEdges(std::ostream& os, Node* node, Node* parent) const {
+        if (node == nullptr) return;
+        if (parent != nullptr) {
+            os << parent->key << "->" << node->key << "|";
+        }
+        PrintEdges(os, node->left, node);
+        PrintEdges(os, node->right, node);
     }
 
     // общий обход от произвольного узла
@@ -456,4 +498,18 @@ public:
         }
         return height;
     }
+
+    // сохранение дерева по строке формата
+    std::string ToStringByFormat(const std::string& format) const {
+        return SerializeNode(root_, format);
+    }
+
+    // сохранение дерева в виде списка пар узел родитель
+    std::string ToStringParentList() const {
+        std::ostringstream os;
+        PrintEdges(os, root_, nullptr);
+        return os.str();
+    }
+
+
 };

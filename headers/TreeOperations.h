@@ -186,3 +186,80 @@ BinaryTree<TKey, TElement> Merge(const BinaryTree<TKey, TElement>& a,
                });
     return result;
 }
+
+// вспомогательная функция для чтения одного символа (учитывает что кириллица занимает 2 байта)
+inline std::string NextToken(const std::string& format, size_t& idx) {
+    if (idx >= format.size()) return "";
+    unsigned char c = format[idx];
+    if (c < 128) {
+        return std::string(1, format[idx++]); // обычный символ ascii
+    } else {
+        std::string res = format.substr(idx, 2); // русская буква
+        idx += 2;
+        return res;
+    }
+}
+
+// парсинг узла из строки по формату
+template <typename TKey, typename TElement>
+void ParseNodeByFormat(BinaryTree<TKey, TElement>& tree, const std::string& s, size_t& pos, const std::string& format) {
+    if (pos >= s.size() || format.empty()) return;
+
+    // получаем первый токен формата
+    size_t formatIdx = 0;
+    std::string firstToken = NextToken(format, formatIdx);
+
+    // если первый токен это скобка (литерал) проверяем совпадает ли она со строкой
+    // если не совпадает значит это пустое поддерево и мы просто выходим
+    bool isLiteral = (firstToken != "К" && firstToken != "K" &&
+                      firstToken != "Л" && firstToken != "L" &&
+                      firstToken != "П" && firstToken != "P");
+
+    if (isLiteral) {
+        if (s.compare(pos, firstToken.size(), firstToken) != 0) {
+            return; // пустое поддерево
+        }
+    }
+
+    TKey key{};
+    bool hasKey = false;
+
+    // идем по формату и собираем узел
+    formatIdx = 0;
+    while (formatIdx < format.size()) {
+        std::string token = NextToken(format, formatIdx);
+
+        if (token == "К" || token == "K") {
+            // читаем ключ до закрывающей скобки
+            size_t start = pos;
+            while (pos < s.size() && s[pos] != '}' && s[pos] != ')' && s[pos] != ']') {
+                pos++;
+            }
+            std::istringstream ss(s.substr(start, pos - start));
+            ss >> key;
+            hasKey = true;
+        } else if (token == "Л" || token == "L") {
+            // рекурсивно читаем левое поддерево
+            ParseNodeByFormat(tree, s, pos, format);
+        } else if (token == "П" || token == "P") {
+            // рекурсивно читаем правое поддерево
+            ParseNodeByFormat(tree, s, pos, format);
+        } else {
+            // это литерал (скобка) просто пропускаем его в строке
+            pos += token.size();
+        }
+    }
+
+    // добавляем узел только после того как прочитали обоих детей
+    if (hasKey) {
+        tree.Add(key, TElement{});
+    }
+}
+// чтение дерева из строки по формату
+template <typename TKey, typename TElement>
+BinaryTree<TKey, TElement> FromStringByFormat(const std::string& s, const std::string& format) {
+    BinaryTree<TKey, TElement> tree;
+    size_t pos = 0;
+    ParseNodeByFormat(tree, s, pos, format);
+    return tree;
+}
