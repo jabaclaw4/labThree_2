@@ -191,6 +191,29 @@ namespace {
         std::cout << "высота " << state.tree.GetHeight() << "\n";
     }
 
+    // обертка для сохранения по формату
+    void DoToStringFormat(const AppState& state) {
+        std::string s = state.tree.ToStringByFormat("{К}(Л)[П]");
+        std::cout << "строка " << s << "\n";
+    }
+
+    // обертка для чтения по формату
+    void DoFromStringFormat(AppState& state) {
+        std::string s = ReadLine("строка: ");
+        try {
+            state.tree = FromStringByFormat<int, int>(s, "{К}(Л)[П]");
+            std::cout << "прочитано размер " << state.tree.GetCount() << "\n";
+        } catch (const std::exception& e) {
+            std::cout << "ошибка " << e.what() << "\n";
+        }
+    }
+
+    // обертка для сохранения списка пар
+    void DoToStringParent(const AppState& state) {
+        std::string s = state.tree.ToStringParentList();
+        std::cout << "список пар " << s << "\n";
+    }
+
     void PrintMenu() {
         std::cout << "\n1 добавить\n";
         std::cout << "2 удалить\n";
@@ -205,6 +228,9 @@ namespace {
         std::cout << "11 проверить вхождение поддерева\n";
         std::cout << "12 информация\n";
         std::cout << "13 запустить тесты\n";
+        std::cout << "14 сохранить по формату\n";
+        std::cout << "15 прочитать по формату\n";
+        std::cout << "16 сохранить список пар\n";
         std::cout << "0 выход\n";
     }
 
@@ -235,11 +261,16 @@ int main() {
                 case 10: DoExtract(state); break;
                 case 11: DoContains(state); break;
                 case 12: ShowInfo(state); break;
+
                 case 13: {
                     int failures = RunAllTests();
                     std::cout << (failures == 0 ? "все тесты прошли\n" : "есть провалы\n");
                     break;
                 }
+
+                case 14: DoToStringFormat(state); break;
+                case 15: DoFromStringFormat(state); break;
+                case 16: DoToStringParent(state); break;
                 default: std::cout << "нет такого пункта\n";
             }
         } catch (const std::exception& e) {

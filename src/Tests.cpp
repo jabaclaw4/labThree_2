@@ -212,6 +212,74 @@ namespace {
         CHECK_THROWS((Merge<int, int>(a, b)), std::invalid_argument);
     }
 
+    // проверка сохранения и чтения по формату
+    void TestFormatSerialization() {
+        BinaryTree<int, int> tree;
+        tree.Add(5, 50);
+        tree.Add(3, 30);
+        tree.Add(8, 80);
+        tree.Add(2, 20);
+
+        // сохраняем по формату
+        std::string s = tree.ToStringByFormat("{К}(Л)[П]");
+
+        // проверяем что строка не пустая и содержит ключи
+        CHECK(!s.empty());
+        CHECK(s.find('5') != std::string::npos);
+        CHECK(s.find('3') != std::string::npos);
+
+        // читаем обратно
+        BinaryTree<int, int> restored = FromStringByFormat<int, int>(s, "{К}(Л)[П]");
+
+        // проверяем что размеры и ключи совпали
+        CHECK(restored.GetCount() == tree.GetCount());
+        CHECK(restored.ContainsKey(5));
+        CHECK(restored.ContainsKey(3));
+        CHECK(restored.ContainsKey(8));
+        CHECK(restored.ContainsKey(2));
+        CHECK(!restored.ContainsKey(100));
+    }
+
+    // проверка сохранения в виде списка пар
+    void TestParentList() {
+        BinaryTree<int, int> tree;
+        tree.Add(5, 50);
+        tree.Add(3, 30);
+        tree.Add(8, 80);
+
+        std::string s = tree.ToStringParentList();
+
+        // проверяем что строка не пустая
+        CHECK(!s.empty());
+
+        // проверяем наличие связей (формат "родитель->ребенок")
+        CHECK(s.find("5->3") != std::string::npos);
+        CHECK(s.find("5->8") != std::string::npos);
+
+        // у листьев нет исходящих связей
+        CHECK(s.find("3->") == std::string::npos);
+        CHECK(s.find("8->") == std::string::npos);
+    }
+
+    // проверка граничных случаев для форматов
+    void TestFormatEdgeCases() {
+        // пустое дерево
+        BinaryTree<int, int> emptyTree;
+        std::string s = emptyTree.ToStringByFormat("{К}(Л)[П]");
+        CHECK(s.empty());
+
+        BinaryTree<int, int> restoredEmpty = FromStringByFormat<int, int>("", "{К}(Л)[П]");
+        CHECK(restoredEmpty.IsEmpty());
+
+        // дерево только с корнем
+        BinaryTree<int, int> single;
+        single.Add(10, 100);
+        std::string s2 = single.ToStringByFormat("{К}(Л)[П]");
+        BinaryTree<int, int> restoredSingle = FromStringByFormat<int, int>(s2, "{К}(Л)[П]");
+        CHECK(restoredSingle.GetCount() == 1);
+        CHECK(restoredSingle.Get(10) == 0); // значение по умолчанию
+    }
+
     using TestFunction = void (*)();
 
     void RunTest(const char* name, TestFunction test) {
@@ -248,6 +316,9 @@ int RunAllTests() {
     RunTest("ContainsSubtree", TestContainsSubtree);
     RunTest("Merge", TestMerge);
     RunTest("Merge коллизия", TestMergeCollision);
+    RunTest("формат строки", TestFormatSerialization);
+    RunTest("список пар узел-родитель", TestParentList);
+    RunTest("граничные случаи формата", TestFormatEdgeCases);
 
     std::cout << "проверок " << g_testChecks << " провалов " << g_testFailures << "\n";
     return g_testFailures;
