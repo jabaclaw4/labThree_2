@@ -21,6 +21,11 @@
 		{
 			"isCMake" : true,
 			"isExternal" : true,
+			"path" : "C:/Program Files/JetBrains/CLion2024.1.4/bin/cmake/win/x64/share/cmake-3.28/Modules/CMakeMinGWFindMake.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
 			"path" : "C:/Program Files/JetBrains/CLion2024.1.4/bin/cmake/win/x64/share/cmake-3.28/Modules/CMakeSystemSpecificInitialize.cmake"
 		},
 		{
@@ -310,6 +315,21 @@
 		{
 			"isCMake" : true,
 			"isExternal" : true,
+			"path" : "C:/Program Files/JetBrains/CLion2024.1.4/bin/cmake/win/x64/share/cmake-3.28/Modules/CMakeFindCodeBlocks.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/JetBrains/CLion2024.1.4/bin/cmake/win/x64/share/cmake-3.28/Modules/CMakeExtraGeneratorDetermineCompilerMacrosAndIncludeDirs.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
+			"path" : "C:/Program Files/JetBrains/CLion2024.1.4/bin/cmake/win/x64/share/cmake-3.28/Modules/ProcessorCount.cmake"
+		},
+		{
+			"isCMake" : true,
+			"isExternal" : true,
 			"path" : "C:/Program Files/JetBrains/CLion2024.1.4/bin/cmake/win/x64/share/cmake-3.28/Modules/CMakeCXXInformation.cmake"
 		},
 		{
@@ -444,8 +464,8 @@
 	"kind" : "cmakeFiles",
 	"paths" : 
 	{
-		"build" : "C:/Users/User/CLionProjects/labThree_2/cmake-build-debug",
-		"source" : "C:/Users/User/CLionProjects/labThree_2"
+		"build" : "C:/Users/jabaclaw4/CLionProjects/labThree_2/cmake-build-debug",
+		"source" : "C:/Users/jabaclaw4/CLionProjects/labThree_2"
 	},
 	"version" : 
 	{
