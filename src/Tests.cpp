@@ -56,7 +56,8 @@ namespace {
         }
 
         auto checkOrder = [&tree](TraverseOrder order, const int* expected, size_t n) {
-            DynamicArray<std::pair<int, int>> result = tree.Traverse(order);
+            // ИЗМЕНЕНИЕ: теперь используем ToArray
+            DynamicArray<std::pair<int, int>> result = tree.ToArray(order);
             CHECK(result.GetSize() == n);
             for (size_t i = 0; i < n; ++i) {
                 CHECK(result[i].first == expected[i]);
@@ -75,6 +76,25 @@ namespace {
         checkOrder(TraverseOrder::ReverseInOrder, rin, 7);
         int rpost[] = {9, 7, 8, 4, 2, 3, 5};
         checkOrder(TraverseOrder::ReversePostOrder, rpost, 7);
+    }
+
+    // НОВЫЙ ТЕСТ: проверка ленивого итератора
+    void TestBinaryTreeIterator() {
+        BinaryTree<int, int> tree;
+        int keys[] = {5, 3, 8, 2, 4};
+        for (int k : keys) {
+            tree.Add(k, k * 10);
+        }
+
+        // Тестируем итератор InOrder
+        TreeIterator<int, int> it(tree.GetRoot(), TraverseOrder::InOrder);
+        int expected[] = {2, 3, 4, 5, 8};
+        int idx = 0;
+        while (it.HasNext()) {
+            CHECK(it.Next().first == expected[idx]);
+            idx++;
+        }
+        CHECK(idx == 5);
     }
 
     void TestMap() {
@@ -306,6 +326,7 @@ int RunAllTests() {
     RunTest("базовые операции", TestBinaryTreeBasic);
     RunTest("удаление", TestBinaryTreeRemove);
     RunTest("обходы", TestTraverse);
+    RunTest("дерево итератор", TestBinaryTreeIterator); // НОВЫЙ ТЕСТ
     RunTest("map", TestMap);
     RunTest("map коллизия", TestMapCollision);
     RunTest("where", TestWhere);

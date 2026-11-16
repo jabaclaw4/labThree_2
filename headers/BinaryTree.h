@@ -9,13 +9,20 @@
 #include "IDictionary.h"
 #include "TraverseOrder.h"
 
+// шаги обхода для итератора
+enum class Step { NODE, LEFT, RIGHT };
+
+// предварительное объявление чтобы дерево могло возвращать итератор
+template <typename TKey, typename TElement>
+class TreeIterator;
+
 // бинарное дерево поиска
 // все операции без рекурсии потому что на упорядоченных данных дерево вырождается в список
 // рекурсия глубиной в сотни тысяч вызовов переполнила бы стек
 // от вырождения защищает периодическая перестройка в сбалансированное дерево
 template <typename TKey, typename TElement>
 class BinaryTree : public IDictionary<TKey, TElement> {
-private:
+public:
     struct Node {
         TKey key;
         TElement element;
@@ -25,10 +32,12 @@ private:
         Node(const TKey& k, const TElement& e) : key(k), element(e), left(nullptr), right(nullptr) {}
     };
 
+private:
     Node* root_;
     size_t count_;
     size_t height_;
 
+    // поиск узла по ключу итеративно
     Node* FindNode(const TKey& key) const {
         Node* cur = root_;
         while (cur != nullptr) {
@@ -149,115 +158,7 @@ private:
         PrintEdges(os, node->right, node);
     }
 
-    // единый универсальный обход на основе машины состояний
-    // вместо дублирования кода мы используем стек который хранит состояние узла
-    // 0 только зашли в узел
-    // 1 вернулись из первой ветки
-    // 2 вернулись из второй ветки
-    template <typename Visitor>
-    void TraverseFromNode(Node* start, TraverseOrder order, Visitor visit) const {
-        if (start == nullptr) {
-            return;
-        }
-
-        // определяем стратегию обхода на основе переданного порядка
-        // в какую сторону идти сначала (зеркально или нет)
-        bool mirrored = (order == TraverseOrder::ReversePreOrder ||
-                         order == TraverseOrder::ReverseInOrder ||
-                         order == TraverseOrder::ReversePostOrder);
-
-        // на каком шаге вызывать функцию visit
-        // 0 = PreOrder (сразу), 1 = InOrder (в середине), 2 = PostOrder (в конце)
-        int visitState = 0;
-        if (order == TraverseOrder::InOrder || order == TraverseOrder::ReverseInOrder) {
-            visitState = 1;
-        } else if (order == TraverseOrder::PostOrder || order == TraverseOrder::ReversePostOrder) {
-            visitState = 2;
-        }
-
-        // структура для стека
-        struct StackFrame {
-            Node* node;
-            int state;
-            StackFrame() : node(nullptr), state(0) {} // обязательный конструктор для DynamicArray
-            StackFrame(Node* n, int s) : node(n), state(s) {}
-        };
-
-        DynamicArray<StackFrame> stack;
-        stack.PushBack(StackFrame(start, 0));
-
-        while (!stack.IsEmpty()) {
-            // берем копию а не ссылку потому что PushBack может перевыделить память
-            StackFrame frame = stack[stack.GetSize() - 1];
-            Node* cur = frame.node;
-
-            if (frame.state == 0) {
-                // состояние 0 мы только что зашли в узел
-                if (visitState == 0) {
-                    visit(cur->key, cur->element);
-                }
-                stack[stack.GetSize() - 1].state = 1; // переводим в следующее состояние
-
-                Node* firstChild = mirrored ? cur->right : cur->left;
-                if (firstChild != nullptr) {
-                    stack.PushBack(StackFrame(firstChild, 0));
-                }
-            }
-            else if (frame.state == 1) {
-                // состояние 1 мы вернулись из первой ветки (левой или правой)
-                if (visitState == 1) {
-                    visit(cur->key, cur->element);
-                }
-                stack[stack.GetSize() - 1].state = 2; // переводим в следующее состояние
-
-                Node* secondChild = mirrored ? cur->left : cur->right;
-                if (secondChild != nullptr) {
-                    stack.PushBack(StackFrame(secondChild, 0));
-                }
-            }
-            else {
-                // состояние 2 мы вернулись из второй ветки обе ветки обойдены
-                if (visitState == 2) {
-                    visit(cur->key, cur->element);
-                }
-                stack.PopBack(); // узел полностью обработан удаляем из стека
-            }
-        }
-    }
-
 public:
-    class Iterator {
-    private:
-        DynamicArray<std::pair<TKey, TElement>> items_;
-        size_t position_;
-
-    public:
-        Iterator() : items_(), position_(0) {}
-
-        explicit Iterator(DynamicArray<std::pair<TKey, TElement>> items)
-                : items_(std::move(items)), position_(0) {}
-
-        bool HasNext() const { return position_ < items_.GetSize(); }
-
-        const std::pair<TKey, TElement>& Current() const {
-            if (!HasNext()) {
-                throw std::out_of_range("BinaryTree::Iterator out of range");
-            }
-            return items_[position_];
-        }
-
-        const std::pair<TKey, TElement>& Next() {
-            if (!HasNext()) {
-                throw std::out_of_range("BinaryTree::Iterator out of range");
-            }
-            return items_[position_++];
-        }
-
-        void Reset() { position_ = 0; }
-
-        size_t GetRemaining() const { return items_.GetSize() - position_; }
-    };
-
     BinaryTree() : root_(nullptr), count_(0), height_(0) {}
 
     // глубокое копирование форма дерева сохраняется
@@ -449,10 +350,16 @@ public:
         }
     }
 
-    // обход всего дерева с вызовом visitor для каждого узла
+    // обход всего дерева через ленивый итератор
+    // здесь больше нет машины состояний и switch
+    // функция просто дергает Next() у итератора
     template <typename Visitor>
     void Traverse(TraverseOrder order, Visitor visit) const {
-        TraverseFromNode(root_, order, visit);
+        TreeIterator<TKey, TElement> it(root_, order);
+        while (it.HasNext()) {
+            auto pair = it.Next();
+            visit(pair.first, pair.second);
+        }
     }
 
     // обход поддерева с корнем в узле с ключом rootKey
@@ -463,11 +370,15 @@ public:
         if (start == nullptr) {
             return;
         }
-        TraverseFromNode(start, order, visit);
+        TreeIterator<TKey, TElement> it(start, order);
+        while (it.HasNext()) {
+            auto pair = it.Next();
+            visit(pair.first, pair.second);
+        }
     }
 
-    // обёртка обхода в массив пар
-    DynamicArray<std::pair<TKey, TElement>> Traverse(TraverseOrder order) const {
+    // обёртка обхода в массив пар (заменяет старый Traverse который возвращал массив)
+    DynamicArray<std::pair<TKey, TElement>> ToArray(TraverseOrder order) const {
         DynamicArray<std::pair<TKey, TElement>> result;
         Traverse(order, [&result](const TKey& key, const TElement& element) {
             result.PushBack(std::make_pair(key, element));
@@ -475,10 +386,12 @@ public:
         return result;
     }
 
-    Iterator Begin(TraverseOrder order = TraverseOrder::InOrder) const {
-        return Iterator(Traverse(order));
+    // создание итератора для заданного порядка
+    TreeIterator<TKey, TElement> Begin(TraverseOrder order = TraverseOrder::InOrder) const {
+        return TreeIterator<TKey, TElement>(root_, order);
     }
 
+    // высота считается по уровням без рекурсии
     size_t GetHeight() const {
         if (root_ == nullptr) {
             return 0;
@@ -514,5 +427,94 @@ public:
         return os.str();
     }
 
-
+    // геттер для корня нужен для графической отрисовки
+    Node* GetRoot() const { return root_; }
 };
+
+// ==============================================================================
+// ИТЕРАТОР (Data-Driven)
+// ==============================================================================
+// ленивый итератор который заранее находит следующий узел
+// благодаря этому HasNext() просто проверяет указатель
+// а Next() отдает данные и делает один шаг вперед
+template <typename TKey, typename TElement>
+class TreeIterator {
+private:
+    using Node = typename BinaryTree<TKey, TElement>::Node;
+
+    // фрейм хранит узел и индекс текущего шага из сценария
+    struct Frame {
+        Node* node;
+        int stepIndex;
+    };
+
+    static constexpr int kStepsCount = 3;
+
+    // таблица сценариев обхода (data-driven)
+    // вместо кучи if мы просто говорим в каком порядке посещать
+    // порядок строк совпадает с порядком enum TraverseOrder
+    static constexpr Step kScenarios[6][kStepsCount] = {
+            {Step::NODE,  Step::LEFT,  Step::RIGHT},  // PreOrder
+            {Step::LEFT,  Step::NODE,  Step::RIGHT},  // InOrder
+            {Step::LEFT,  Step::RIGHT, Step::NODE },  // PostOrder
+            {Step::NODE,  Step::RIGHT, Step::LEFT },  // ReversePreOrder
+            {Step::RIGHT, Step::NODE,  Step::LEFT },  // ReverseInOrder
+            {Step::RIGHT, Step::LEFT,  Step::NODE }   // ReversePostOrder
+    };
+
+    DynamicArray<Frame> stack_;
+    const Step* steps_;
+    Node* current_ = nullptr;
+
+    // поиск следующего узла для выдачи
+    void Advance() {
+        current_ = nullptr;
+        while (!stack_.IsEmpty()) {
+            Frame& frame = stack_[stack_.GetSize() - 1];
+
+            // если все шаги для узла сделаны удаляем его
+            if (frame.stepIndex >= kStepsCount) {
+                stack_.PopBack();
+                continue;
+            }
+
+            // забираем данные до PushBack так как ссылка frame может стать невалидной
+            Node* cur = frame.node;
+            Step step = steps_[frame.stepIndex++];
+
+            if (step == Step::NODE) {
+                current_ = cur;
+                return;
+            }
+
+            Node* child = (step == Step::LEFT) ? cur->left : cur->right;
+            if (child != nullptr) {
+                stack_.PushBack({child, 0});
+            }
+        }
+    }
+
+public:
+    TreeIterator(Node* root, TraverseOrder order)
+            : steps_(kScenarios[static_cast<int>(order)]) {
+        if (root != nullptr) {
+            stack_.PushBack({root, 0});
+        }
+        Advance();
+    }
+
+    bool HasNext() const { return current_ != nullptr; }
+
+    std::pair<TKey, TElement> Next() {
+        if (current_ == nullptr) {
+            throw std::out_of_range("End of iterator");
+        }
+        std::pair<TKey, TElement> result{current_->key, current_->element};
+        Advance();
+        return result;
+    }
+};
+
+// определение статического массива (требуется для некоторых версий C++)
+template <typename TKey, typename TElement>
+constexpr Step TreeIterator<TKey, TElement>::kScenarios[6][TreeIterator<TKey, TElement>::kStepsCount];

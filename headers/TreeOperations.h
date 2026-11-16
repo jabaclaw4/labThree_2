@@ -137,7 +137,8 @@ bool ContainsSubtree(const BinaryTree<TKey, TElement>& source,
         return false;
     }
 
-    DynamicArray<std::pair<TKey, TElement>> subSeq = sub.Traverse(TraverseOrder::PreOrder);
+    // ИЗМЕНЕНИЕ: вместо Traverse используем ToArray
+    DynamicArray<std::pair<TKey, TElement>> subSeq = sub.ToArray(TraverseOrder::PreOrder);
     size_t subSize = subSeq.GetSize();
 
     DynamicArray<TKey> keysInSource;
