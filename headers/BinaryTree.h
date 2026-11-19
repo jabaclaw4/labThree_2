@@ -158,6 +158,86 @@ private:
         PrintEdges(os, node->right, node);
     }
 
+<<<<<<< HEAD
+=======
+    // единый универсальный обход на основе машины состояний
+    // вместо дублирования кода мы используем стек который хранит состояние узла
+    // 0 только зашли в узел
+    // 1 вернулись из первой ветки
+    // 2 вернулись из второй ветки
+    template <typename Visitor>
+    void TraverseFromNode(Node* start, TraverseOrder order, Visitor visit) const {
+        if (start == nullptr) {
+            return;
+        }
+
+
+        // определяем стратегию обхода на основе переданного порядка
+        // в какую сторону идти сначала (зеркально или нет)
+        bool mirrored = (order == TraverseOrder::ReversePreOrder ||
+                         order == TraverseOrder::ReverseInOrder ||
+                         order == TraverseOrder::ReversePostOrder);
+
+        // на каком шаге вызывать функцию visit
+        // 0 = PreOrder (сразу), 1 = InOrder (в середине), 2 = PostOrder (в конце)
+        int visitState = 0;
+        if (order == TraverseOrder::InOrder || order == TraverseOrder::ReverseInOrder) {
+            visitState = 1;
+        } else if (order == TraverseOrder::PostOrder || order == TraverseOrder::ReversePostOrder) {
+            visitState = 2;
+        }
+
+        // структура для стека
+        struct StackFrame {
+            Node* node;
+            int state;
+            StackFrame() : node(nullptr), state(0) {} // обязательный конструктор для DynamicArray
+            StackFrame(Node* n, int s) : node(n), state(s) {}
+        };
+
+        DynamicArray<StackFrame> stack;
+        stack.PushBack(StackFrame(start, 0));
+
+        while (!stack.IsEmpty()) {
+            // берем копию а не ссылку потому что PushBack может перевыделить память
+            StackFrame frame = stack[stack.GetSize() - 1];
+            Node* cur = frame.node;
+
+            if (frame.state == 0) {
+                // состояние 0 мы только что зашли в узел
+                if (visitState == 0) {
+                    visit(cur->key, cur->element);
+                }
+                stack[stack.GetSize() - 1].state = 1; // переводим в следующее состояние
+
+                Node* firstChild = mirrored ? cur->right : cur->left;
+                if (firstChild != nullptr) {
+                    stack.PushBack(StackFrame(firstChild, 0));
+                }
+            }
+            else if (frame.state == 1) {
+                // состояние 1 мы вернулись из первой ветки (левой или правой)
+                if (visitState == 1) {
+                    visit(cur->key, cur->element);
+                }
+                stack[stack.GetSize() - 1].state = 2; // переводим в следующее состояние
+
+                Node* secondChild = mirrored ? cur->left : cur->right;
+                if (secondChild != nullptr) {
+                    stack.PushBack(StackFrame(secondChild, 0));
+                }
+            }
+            else {
+                // состояние 2 мы вернулись из второй ветки обе ветки обойдены
+                if (visitState == 2) {
+                    visit(cur->key, cur->element);
+                }
+                stack.PopBack(); // узел полностью обработан удаляем из стека
+            }
+        }
+    }
+
+>>>>>>> eeb247a (fixed reverse)
 public:
     BinaryTree() : root_(nullptr), count_(0), height_(0) {}
 
